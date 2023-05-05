@@ -5,7 +5,9 @@ Prerequisites
 Before starting, ensure that you have the following prerequisites installed and configured:
 
 An Azure account
+
 A Laravel application
+
 Composer package manager
 
 # Step 1: Azure AD DS Configuration
