@@ -1,66 +1,254 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Laravel Active Directory with Azure and LDAP
+This guide will walk you through the steps necessary to create a custom active directory with LDAP integration, using Azure AD DS and Laravel. The following sections will explain the necessary configuration and integration steps in detail.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Prerequisites
+Before starting, ensure that you have the following prerequisites installed and configured:
 
-## About Laravel
+An Azure account
+A Laravel application
+Composer package manager
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+# Step 1: Azure AD DS Configuration
+Log in to your Azure account and navigate to the Azure portal.
+Click on the "Create a resource" button and search for "Azure Active Directory Domain Services".
+Follow the prompts to create a new instance of Azure AD DS.
+After the instance has been created, navigate to the "Overview" page and note down the domain name and the domain administrator username and password.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+# Step 2: Configure secure LDAP for an Azure Active Directory Domain Services managed
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+You will need a certificate personally i used self-signed certificate
 
-## Learning Laravel
+# Create a self-signed certificate for use with Azure AD DS
+https://learn.microsoft.com/en-us/azure/active-directory-domain-services/tutorial-configure-ldaps
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- After you secured the LDAP server you can go to your Domain Services yourdomain.com and Click properties
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+You will find Secure LDAP external IP addresses copy the IP address
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Go to C:/windows/system32/drivers/etc/hosts 
 
-## Laravel Sponsors
+Make a new connection at the end of the line
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+(YOUR EXTERNAL IP ADDRESS)  aadds.yourdomain.com
 
-### Premium Partners
+For example
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+# 1.1.1.1.1  aadds.yourdomain.com
 
-## Contributing
+After that install ldp.exe from 
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+https://learn.microsoft.com/en-us/windows-server/remote/remote-server-administration-tools
 
-## Code of Conduct
+Launch ldp.exe go to Connection and use 
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+aadds.yourdomain.com
 
-## Security Vulnerabilities
+Port 636 and enable SSL checkbox
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+After you connect you should go to 
 
-## License
+Connection > Bind > Bind with Credentials
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Login with credentials user password and yourdomain.com
+
+If you get an error logging in then you should add the port 636 to firewall to enable LDAPS
+
+# Step 3: Connecting to LDAP with Laravel
+
+Install LdapRecord
+
+composer require directorytree/ldaprecord-laravel
+php artisan vendor:publish --provider="LdapRecord\Laravel\LdapServiceProvider"
+
+Install Fortify
+
+composer require laravel/fortify
+php artisan vendor:publish --provider="Laravel\Fortify\FortifyServiceProvider"
+
+# Don't run the migrations yet 
+
+Edit your users migration and make email nullable if you dont want to use email
+
+// database/migrations/2014_10_12_000000_create_users_table.php
+$table->string('username')->unique(); // add this line
+
+Run the migrations php artisan migrate
+
+# Step 4: Ldap Record Configuration
+
+
+
+// config/auth.php
+
+'guards' => [
+
+    'web' => [
+    
+        'driver' => 'session',
+        
+        'provider' => 'ldap', // Changed to 'ldap'
+        
+    ],
+    
+],
+
+'providers' => [
+
+    'ldap' => [
+    
+        'driver' => 'ldap',
+        
+        'model' => LdapRecord\Models\ActiveDirectory\User::class,
+        
+        'database' => [
+        
+            'model' => App\Models\User::class,
+            
+            'sync_passwords' => false,
+            
+            'sync_attributes' => [
+            
+                'name' => 'cn',
+                
+                'email' => 'mail',
+                  
+                'username' => 'samaccountname',
+                
+            ],
+            
+        ],
+        
+    ],
+    
+],
+
+
+Add the LdapAuthenticatable interface and the AuthenticatesWithLdap trait to your User model.
+
+// app/Models/User.php
+
+use LdapRecord\Laravel\Auth\LdapAuthenticatable;
+
+use LdapRecord\Laravel\Auth\AuthenticatesWithLdap;
+
+class User extends Authenticatable implements LdapAuthenticatable
+{
+
+    use AuthenticatesWithLdap;
+
+}
+
+
+We need to update the fortify configuration to expect the username instead of an email address and we also need to disable other built in features as we don’t want users to register via our app, we want them to log in with an existing active directory account.
+
+// config/fortify.php
+
+'username' => 'username',
+
+'features' => [
+
+    // Features::registration(),
+    
+    // Features::resetPasswords(),
+    
+    // Features::emailVerification(),
+    
+    // Features::updateProfileInformation(),
+    
+    // Features::updatePasswords(),
+    
+    // Features::twoFactorAuthentication(),
+    
+],
+
+
+Update the AuthServiceProvider by overwriting the Fortify:authenticateUsing method so it expects the samaccountname and password, rather than email.
+
+// app/Providers/AuthServiceProvider.php
+
+public function boot() 
+{
+   Fortify::authenticateUsing(function ($request) {
+   
+        $validated = Auth::validate([
+        
+            'samaccountname' => $request->username,
+            
+            'password' => $request->password
+            
+        ]);
+
+        return $validated ? Auth::getLastAttempted() : null;
+        
+    }); 
+    
+}
+  
+  
+  #Step 5: Testing
+  
+Go to your .env variables
+ add these
+ 
+LDAP_LOGGING=true
+
+LDAP_CONNECTION=default
+
+LDAP_HOST=127.0.0.1
+
+LDAP_USERNAME="cn=user,dc=local,dc=com"
+
+LDAP_PASSWORD=secret
+
+LDAP_PORT=636
+
+LDAP_BASE_DN="dc=local,dc=com"
+
+LDAP_TIMEOUT=5
+
+LDAP_SSL=true
+
+LDAP_TLS=false
+
+Change them to your needs and update the last config app 
+Go to config/ldap.php
+
+'default' => [
+
+            'hosts' => [env('LDAP_HOST', '127.0.0.1')],
+            
+            'username' => env('LDAP_USERNAME', 'cn=user,dc=local,dc=com'),
+            
+            'password' => env('LDAP_PASSWORD', 'secret'),
+            
+            'port' => env('LDAP_PORT', 389),
+            
+            'base_dn' => env('LDAP_BASE_DN', 'dc=local,dc=com'),
+            
+            'timeout' => env('LDAP_TIMEOUT', 5),
+            
+            'use_ssl' => env('LDAP_SSL', false),
+            
+            'use_tls' => env('LDAP_TLS', false),
+            
+            'options' => [
+            
+                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER, // add this line (if you are using self signed certificate)
+                
+            ],
+            
+# php artisan ldap:test
+
+Once you are successfully logged in with your LDAP credentials 
+
+then you can import users or groups like this
+
+php artisan ldap:import users
+
+or you can do just php artisan ldap:import
+
+if it gives you information that it found users ready to import it will just import
+
+or you can create a login blade and you can login users from there with their active directory credentials
+
+# Enjoy
